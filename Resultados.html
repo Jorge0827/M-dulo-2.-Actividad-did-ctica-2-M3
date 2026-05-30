@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Banco de Colombia | Informe de Simulación de Colas</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+            min-height: 100vh;
+            padding: 30px 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            border-radius: 25px;
+            padding: 40px;
+            margin-bottom: 30px;
+            text-align: center;
+            color: white;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: "🏦";
+            position: absolute;
+            font-size: 200px;
+            opacity: 0.08;
+            right: -30px;
+            bottom: -60px;
+            transform: rotate(-15deg);
+        }
+
+        .header h1 {
+            font-size: 2.8em;
+            margin-bottom: 10px;
+            letter-spacing: -1px;
+        }
+
+        .header .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+            margin-bottom: 20px;
+        }
+
+        .badge-container {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .badge {
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+
+        /* KPI Cards */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .kpi-card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px 20px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            transition: transform 0.3s ease;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .kpi-icon {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .kpi-value {
+            font-size: 2.2em;
+            font-weight: bold;
+            color: #1e3c72;
+        }
+
+        .kpi-label {
+            color: #666;
+            font-size: 0.85em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Secciones */
+        .section {
+            background: white;
+            border-radius: 25px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+
+        .section h2 {
+            color: #1e3c72;
+            border-left: 5px solid #2a5298;
+            padding-left: 15px;
+            margin-bottom: 25px;
+            font-size: 1.8em;
+        }
+
+        .section h3 {
+            color: #2a5298;
+            margin: 20px 0 15px 0;
+            font-size: 1.3em;
+        }
+
+        /* Tablas */
+        .table-wrapper {
+            overflow-x: auto;
+            margin: 20px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        th {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 12px 15px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 10px 15px;
+            text-align: center;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        tr:hover {
+            background: #f5f5f5;
+        }
+
+        /* Gráficas */
+        .chart-container {
+            max-width: 500px;
+            margin: 20px auto;
+        }
+
+        canvas {
+            max-height: 300px;
+            width: 100%;
+        }
+
+        /* Botones de descarga */
+        .download-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 20px;
+            justify-content: center;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9em;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn-excel {
+            background: linear-gradient(135deg, #1e7e34 0%, #28a745 100%);
+        }
+
+        /* Grid de 2 columnas */
+        .two-columns {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+        }
+
+        /* Conclusiones */
+        .conclusion-box {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            border-left: 6px solid #155724;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+
+        .warning-box {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%);
+            border-left: 6px solid #856404;
+            padding: 20px;
+            border-radius: 12px;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 30px;
+            color: white;
+            opacity: 0.8;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 { font-size: 1.8em; }
+            .two-columns { grid-template-columns: 1fr; }
+            .kpi-value { font-size: 1.5em; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- HEADER -->
+    <div class="header">
+        <h1>🏦 Banco de Colombia</h1>
+        <p class="subtitle">Simulación de Sistemas de Colas M/M/1<br>Análisis y Optimización de Cajeros</p>
+        <div class="badge-container">
+            <span class="badge">📊 10 Réplicas</span>
+            <span class="badge">⏱️ 8 horas/día</span>
+            <span class="badge">👥 3 Cajeros</span>
+            <span class="badge">📈 Modelo M/M/1</span>
+        </div>
+    </div>
+
+    <!-- KPI CARDS -->
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-icon">👥</div>
+            <div class="kpi-value">201.3</div>
+            <div class="kpi-label">Clientes por día (promedio)</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon">⏱️</div>
+            <div class="kpi-value">0.40</div>
+            <div class="kpi-label">Tiempo de espera (min)</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon">⚡</div>
+            <div class="kpi-value">3.22</div>
+            <div class="kpi-label">Tiempo de servicio (min)</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon">📊</div>
+            <div class="kpi-value">45.0%</div>
+            <div class="kpi-label">Utilización promedio</div>
+        </div>
+    </div>
+
+    <!-- PUNTO 1 -->
+    <div class="section">
+        <h2>📊 Punto 1: Tiempo promedio de atención por cajero</h2>
+        <div class="two-columns">
+            <div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr><th>Cajero</th><th>Tiempo promedio (minutos)</th><th>Desempeño</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Cajero 0</td><td>3.5164</td><td>🔴 Más lento</td></tr>
+                            <tr><td>Cajero 1</td><td>3.0443</td><td>🟡 Normal</td></tr>
+                            <tr><td>Cajero 2</td><td>2.9440</td><td>✅ Más rápido</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="conclusion-box">
+                    <strong>✅ Conclusión Punto 1:</strong><br>
+                    Cajero con <strong>menor tiempo</strong>: Cajero 2 (2.9440 minutos)<br>
+                    Cajero con <strong>mayor tiempo</strong>: Cajero 0 (3.5164 minutos)
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="chartPunto1"></canvas>
+            </div>
+        </div>
+        <div class="download-buttons">
+            <a href="./excels/Padron_Yeison_Ardila_Juan_Ruiz_Edwin_Echavarria_Jorge_problemaBancario_punto_1_resultados.xlsx" id="downloadExcel1" class="btn btn-excel">📥 Descargar resultados_simulacion_punto1.xlsx</a>
+        </div>
+    </div>
+
+    <!-- PUNTO 2 -->
+    <div class="section">
+        <h2>📊 Punto 2: Promedio de usuarios por tipo</h2>
+        <div class="two-columns">
+            <div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th>Tipo de acción</th><th>Tipo de usuario</th><th>Promedio/día</th><th>Desviación</th></tr></thead>
+                        <tbody>
+                            <tr><td>Retiro</td><td>Lento</td><td>23.80</td><td>±4.59</td></tr>
+                            <tr><td>Retiro</td><td>Muy lento</td><td>26.40</td><td>±3.37</td></tr>
+                            <tr><td>Retiro</td><td>Normal</td><td>57.90</td><td>±8.13</td></tr>
+                            <tr><td>Retiro</td><td>Rápido</td><td>31.80</td><td>±6.39</td></tr>
+                            <tr><td>Pago</td><td>Lento</td><td>20.30</td><td>±5.08</td></tr>
+                            <tr><td>Pago</td><td>Muy lento</td><td>24.10</td><td>±2.64</td></tr>
+                            <tr><td>Pago</td><td>Normal</td><td>12.00</td><td>±3.30</td></tr>
+                            <tr><td>Pago</td><td>Rápido</td><td>5.00</td><td>±1.89</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th>Métrica</th><th>Valor</th></tr></thead>
+                        <tbody>
+                            <tr><td>Total Retiros</td><td>139.90 usuarios/día</td></tr>
+                            <tr><td>Total Pagos</td><td>61.40 usuarios/día</td></tr>
+                            <tr><td>Total General</td><td>201.30 usuarios/día</td></tr>
+                            <tr><td>Proporción Retiros</td><td>69.5% (esperado 70%)</td></tr>
+                            <tr><td>Proporción Pagos</td><td>30.5% (esperado 30%)</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="download-buttons">
+            <a href="./excels/Padron_Yeison_Ardila_Juan_Ruiz_Edwin_Echavarria_Jorge_problemaBancario_punto2_promedio_usuarios_por_tipo.xlsx" id="downloadExcel2" class="btn btn-excel">📥 Descargar punto2_promedio_usuarios_por_tipo.xlsx</a>
+        </div>
+    </div>
+
+    <!-- PUNTO 3 -->
+    <div class="section">
+        <h2>📊 Punto 3: Usuarios por tipo en cada réplica</h2>
+        <div class="table-wrapper">
+            <table>
+                <thead><tr><th>Réplica</th><th>Pago Lento</th><th>Pago Muy lento</th><th>Pago Normal</th><th>Pago Rápido</th><th>Retiro Lento</th><th>Retiro Muy lento</th><th>Retiro Normal</th><th>Retiro Rápido</th></tr></thead>
+                <tbody>
+                    <tr><td>1</td><td>19</td><td>23</td><td>10</td><td>7</td><td>16</td><td>24</td><td>66</td><td>36</td></tr>
+                    <tr><td>2</td><td>28</td><td>29</td><td>14</td><td>6</td><td>24</td><td>21</td><td>45</td><td>37</td></tr>
+                    <tr><td>3</td><td>18</td><td>22</td><td>9</td><td>2</td><td>17</td><td>29</td><td>64</td><td>33</td></tr>
+                    <tr><td>4</td><td>17</td><td>23</td><td>16</td><td>3</td><td>30</td><td>28</td><td>54</td><td>32</td></tr>
+                    <tr><td>5</td><td>27</td><td>22</td><td>10</td><td>4</td><td>23</td><td>22</td><td>46</td><td>33</td></tr>
+                    <tr><td>6</td><td>12</td><td>28</td><td>11</td><td>3</td><td>29</td><td>32</td><td>65</td><td>42</td></tr>
+                    <tr><td>7</td><td>23</td><td>25</td><td>15</td><td>7</td><td>27</td><td>26</td><td>56</td><td>34</td></tr>
+                    <tr><td>8</td><td>22</td><td>25</td><td>17</td><td>7</td><td>23</td><td>26</td><td>68</td><td>21</td></tr>
+                    <tr><td>9</td><td>15</td><td>21</td><td>7</td><td>5</td><td>23</td><td>27</td><td>55</td><td>24</td></tr>
+                    <tr><td>10</td><td>22</td><td>23</td><td>11</td><td>6</td><td>26</td><td>29</td><td>60</td><td>26</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="conclusion-box">
+            <strong>📌 Réplica con MENOS usuarios en TOTAL:</strong> Réplica 9 (177 usuarios)<br>
+            <strong>📌 Réplica con MENOS usuarios por tipo:</strong> Pago rápido → Réplica 3 (2 usuarios), Retiro normal → Réplica 2 (45 usuarios)
+        </div>
+        <div class="download-buttons">
+            <a href="./excels/Padron_Yeison_Ardila_Juan_Ruiz_Edwin_Echavarria_Jorge_problemaBancario_punto3_usuarios_por_replica.xlsx" id="downloadExcel3a" class="btn btn-excel">📥 Descargar punto3_usuarios_por_replica.xlsx</a>
+            <a href="./excels/Padron_Yeison_Ardila_Juan_Ruiz_Edwin_Echavarria_Jorge_problemaBancario_punto3_resumen_replicas_minimas.xlsx" id="downloadExcel3b" class="btn btn-excel">📥 Descargar punto3_resumen_replicas_minimas.xlsx</a>
+        </div>
+    </div>
+
+    <!-- PUNTO 4 -->
+    <div class="section">
+        <h2>📊 Punto 4: ¿Es necesario crear un nuevo cajero?</h2>
+        <div class="two-columns">
+            <div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th>Tipo de usuario</th><th>Tiempo de espera (min)</th></tr></thead>
+                        <tbody>
+                            <tr><td>Pago - Rápido</td><td>0.61</td></tr>
+                            <tr><td>Pago - Normal</td><td>0.57</td></tr>
+                            <tr><td>Retiro - Rápido</td><td>0.47</td></tr>
+                            <tr><td>Retiro - Normal</td><td>0.42</td></tr>
+                            <tr><td>Pago - Lento</td><td>0.38</td></tr>
+                            <tr><td>Retiro - Muy lento</td><td>0.33</td></tr>
+                            <tr><td>Pago - Muy lento</td><td>0.32</td></tr>
+                            <tr><td>Retiro - Lento</td><td>0.28</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th>Cajero</th><th>Utilización</th></tr></thead>
+                        <tbody>
+                            <tr><td>Cajero 0</td><td>61.2%</td></tr>
+                            <tr><td>Cajero 1</td><td>44.7%</td></tr>
+                            <tr><td>Cajero 2</td><td>28.9%</td></tr>
+                            <tr><td><strong>Promedio</strong></td><td><strong>45.0%</strong></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="conclusion-box">
+            <strong>✅ Conclusión Punto 4:</strong><br>
+            <strong>NO es necesario crear un nuevo cajero</strong><br>
+            Justificación: Tiempo de espera promedio de 0.40 minutos y utilización del 45.0% (muy por debajo del umbral crítico del 85%).
+        </div>
+        <div class="download-buttons">
+            <a href="./excels/Padron_Yeison_Ardila_Juan_Ruiz_Edwin_Echavarria_Jorge_problemaBancario_punto4_necesidad_nuevo_cajero.xlsx" id="downloadExcel4a" class="btn btn-excel">📥 Descargar punto4_necesidad_nuevo_cajero.xlsx</a>
+            <a href="./excels/Padron_Yeison_Ardila_Juan_Ruiz_Edwin_Echavarria_Jorge_problemaBancario_punto4_tiempos_espera_por_tipo.xlsx" id="downloadExcel4b" class="btn btn-excel">📥 Descargar punto4_tiempos_espera_por_tipo.xlsx</a>
+        </div>
+    </div>
+
+    <!-- PUNTO 5 -->
+    <div class="section">
+        <h2>📊 Punto 5: Comparación de configuraciones</h2>
+        <div class="two-columns">
+            <div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th>Configuración</th><th>Tiempo espera (min)</th><th>Retiros esperan</th><th>Pagos esperan</th><th>Clientes/día</th></tr></thead>
+                        <tbody>
+                            <tr><td>3 cajas mixtas</td><td><strong>0.40</strong> ✅</td><td>0.39</td><td>0.41</td><td>201.3</td></tr>
+                            <tr><td>1R + 2P</td><td>4.75</td><td>6.29</td><td>1.14</td><td>203.8</td></tr>
+                            <tr><td>2R + 1P</td><td>2.34</td><td>1.03</td><td>5.40</td><td>198.9</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="chartPunto5"></canvas>
+            </div>
+        </div>
+        <div class="conclusion-box">
+            <strong>🎯 Recomendación final para el Banco de Colombia:</strong><br>
+            ✅ <strong>Mantener las 3 cajas mixtas (sin especialización)</strong><br>
+            La configuración actual ofrece el menor tiempo de espera (0.40 minutos) y una distribución equitativa del servicio.
+        </div>
+        <div class="download-buttons">
+            <a href="./excels/Padron_Yeison_Ardila_Juan_Ruiz_Edwin_Echavarria_Jorge_problemaBancario_punto5_comparacion_configuraciones.xlsx" id="downloadExcel5" class="btn btn-excel">📥 Descargar punto5_comparacion_configuraciones.xlsx</a>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="footer">
+        <p>📊 Simulación basada en modelo M/M/1 | 10 réplicas × 8 horas | Banco de Colombia</p>
+        <p>Desarrollado para Actividad Didáctica 2-M3 | Simulación de Sistemas de Colas</p>
+    </div>
+</div>
+
+<script>
+    // Gráfica Punto 1
+    const ctx1 = document.getElementById('chartPunto1').getContext('2d');
+    new Chart(ctx1, {
+        type: 'bar',
+        data: {
+            labels: ['Cajero 0', 'Cajero 1', 'Cajero 2'],
+            datasets: [{
+                label: 'Tiempo promedio de atención (minutos)',
+                data: [3.5164, 3.0443, 2.9440],
+                backgroundColor: ['#dc3545', '#ffc107', '#28a745'],
+                borderRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: { legend: { position: 'top' } }
+        }
+    });
+
+    // Gráfica Punto 5
+    const ctx5 = document.getElementById('chartPunto5').getContext('2d');
+    new Chart(ctx5, {
+        type: 'bar',
+        data: {
+            labels: ['3 cajas mixtas', '1R + 2P', '2R + 1P'],
+            datasets: [
+                { label: 'Tiempo de espera (min)', data: [0.40, 4.75, 2.34], backgroundColor: '#2a5298', borderRadius: 8 },
+                { label: 'Retiros esperan', data: [0.39, 6.29, 1.03], backgroundColor: '#28a745', borderRadius: 8 },
+                { label: 'Pagos esperan', data: [0.41, 1.14, 5.40], backgroundColor: '#ffc107', borderRadius: 8 }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: { legend: { position: 'top' } }
+        }
+    });
+</script>
+</body>
+</html>
